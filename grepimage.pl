@@ -7,6 +7,11 @@ use strict;
 # ./grepimage.pl 18 55 00 13 00 00 60 1850+14_ha-r_mosaic.fit
 #
 
+# Pre-requisites:
+# Astro-FITS-CFITSIO-1.05 or later for CFITSIO.pm
+# PGPLOT-2.21 or later for PGPLOT.pm
+# ExtUtils/F77.pm 
+
 #use Astro::FITS::CFITSIO;
 #use Astro::FITS::CFITSIO qw( :longnames );
 
@@ -17,7 +22,7 @@ use Astro::WCS::LibWCS qw( :constants ); # export constant names
 use Astro::FITS::CFITSIO;
 use Astro::FITS::CFITSIO qw( :constants :longnames );
 
-use PGPLOT;
+#use PGPLOT;
 
 # do I need this?
 use Carp;
@@ -30,6 +35,9 @@ use Image::Magick;
 
 require "check_status.pl";
 
+### Check arguments
+
+# Check number of arguments
 if ($#ARGV < 7){
 print "program usage\n";
 print "grepimage  HH mm ss\.s dd mm ss\.s \<image size in arcsec\> \<regex\>\n";
@@ -90,22 +98,28 @@ my $imsize_arcsec = $ARGV[6];
 
 print "\nInput parameters appear to be valid\n\n";
 
+# 
 
-my @infiles = ();
+#my @infile = ();
+my $infile = ();
 
 my $fname=" ";
 my $i = 0;
-my $nfiles = $#ARGV +1 -7;
+#my $nfiles = $#ARGV +1 -7;
 
 #print "nfiles is $nfiles \n\n";
 
-foreach $i (0..$nfiles-1){
-$infiles[$i] = $ARGV[$i+7];
-}
+#foreach $i (0..$nfiles-1){
+#$infiles[$i] = $ARGV[$i+7];
+#}
 
-print "Checking the following files for input coordinates \n";
-map { print "$_\n" } @infiles;
+$infile = $ARGV[8];
+
+#print "Checking the following files for input coordinates \n";
+#map { print "$_\n" } @infiles;
 print "\n";
+
+print "Checking the following file for input coordinates \n";                       
 
 my $filename = " ";
 my $header_length=0;
@@ -129,33 +143,33 @@ my $dec = str2dec($decstr);
 
 #print "ra angle is $ra and dec angle is $dec\n";
 
-
-foreach $i (0..$nfiles-1){
+#foreach $i (0..$nfiles-1){
 
 #print "start of loop\n";
 
-    $filename = $infiles[$i];
+#    $filename = $infiles[$i];
 #    print "opening $filename \n";
 
-    $fitsheader = " ";
-    $fitsheader = fitsrhead($filename, $header_length, $bytes_before_data);
-    $wcs=" ";
-    $wcs = wcsinitn ($fitsheader, 0);
+$fitsheader = " ";
+$fitsheader = fitsrhead($filename, $header_length, $bytes_before_data);
+$wcs=" ";
+$wcs = wcsinitn ($fitsheader, 0);
     
-#    print "wcs structure is \@wcs \n";
+# print "wcs structure is \@wcs \n";
 
-    my $retval=0;
-    my $xpixpos = 0;
-    my $ypixpos = 0;
-    my $offscl=0;
+my $retval=0;
+my $xpixpos = 0;
+my $ypixpos = 0;
+my $offscl=0;
 
-    $retval=wcs2pix($wcs,$ra,$dec,$xpixpos,$ypixpos,$offscl);
+# Find pixel coordinate corresponding to input ra and dec
+$retval=wcs2pix($wcs,$ra,$dec,$xpixpos,$ypixpos,$offscl);
 
 # offscl should be zero if we're within the bounds of the image
 #    print "offscl is ",$offscl,"\n";
 
-    if ($offscl == 0) {
-	print "Coordinates $rastr $decstr are in $filename\n";
+if ($offscl == 0) {
+    print "Coordinates $rastr $decstr are in $filename\n";
 
 	my $status = 0;
 	my $fptr = Astro::FITS::CFITSIO::open_file($filename,Astro::FITS::CFITSIO::READONLY(),$status);
@@ -170,18 +184,8 @@ foreach $i (0..$nfiles-1){
 	$fptr->get_img_parm(undef,undef,$naxes,$status);
 	my ($naxis1,$naxis2) = @$naxes;
 
-#
-# read image into $array, close file
-
 	print "Reading ${naxis2}x${naxis1} image...";
 
-# Find pixel coordinate corresponding to input ra and dec
-
-
-
-# Extract subarray here
-
-#	print("Extracting image centred on $xpixpos and $ypixpos \n");
 
 # Pixel coordinates were found in call to wcs2pix above
 	print "pixel coordinates are $xpixpos and $ypixpos \n";
@@ -251,73 +255,23 @@ printf("Size of box in pixels is $nxpixsize \n");
 # Now need to extract subarray, with suitable checking for edge conditions
 ###########################################################################
 
-print("\nExtracting image centred on $xpixposint and $ypixposint \n\n");
+# Boolean variable to say if image clipping will occur, fudge a boolean with
+# 0 and 1, 0 is false, 1 is true
+my $clipping = 0;
 
-# Calculate bottom left coordinate
+# Check here whether we can extract the full requested subimage.
+if ( $xpixpos - int($nxpixsize/2) < 0 ) {$clipping = 1;}
+if ( $xpixpos + int($nxpixsize/2) > $naxis1 ) {$clipping = 1;}
 
-my $xbotleft=-99;
-if ($xpixposint - int($nxpixsize/2) < 0) 
-  {$xbotleft = 0;} 
-else 
-  {$xbotleft = $xpixposint - int($nxpixsize/2);}
-#print("xbotleft is $xbotleft \n");
+if ( $ypixpos - int($nxpixsize/2) < 0 ) {$clipping = 1;}
+if ( $ypixpos + int($nxpixsize/2) > $naxis2 ) {$clipping = 1;}
 
-my $ybotleft=-99;
-if ($ypixposint - int($nxpixsize/2) < 0) 
-  {$ybotleft = 0;} 
-else 
-  {$ybotleft = $ypixposint - int($nxpixsize/2);}
-#print("ybotleft is $ybotleft \n");
+if ( $clipping == 1 ){
+    print "Image clipping will occur \n";}
+    else
+	{
+	    print "No Image clipping will occur \n";}
 
-# Calculate bottom right coordinate
-
-my $xbotright=-99;
-if ($xpixposint + int($nxpixsize/2) > $naxis1)
-  {$xbotright = $naxis1;} 
-else 
-  {$xbotright = $xpixposint + int($nxpixsize/2);}
-#print("xbotright is $xbotright \n");
-
-my $ybotright=-99;
-if ($ypixposint - int($nxpixsize/2) < 0) 
-  {$ybotright = 0;} 
-else 
-  {$ybotright = $ypixposint - int($nxpixsize/2);}
-#print("ybotright is $ybotleft \n");
-
-# Calculate top left coordinate
-
-my $xtopleft=-99;
-if ($xpixposint - int($nxpixsize/2) < 0 ) 
-  {$xtopleft = 0;} 
-else 
-  {$xtopleft = $xpixposint - int($nxpixsize/2);}
-#print("xtopleft is $xtopleft \n");
-
-my $ytopleft=-99;
-if ($ypixposint + int($nxpixsize/2) > $naxis2 ) 
-  {$ytopleft = $naxis2;} 
-else 
-  {$ytopleft = $ypixposint + int($nxpixsize/2);}
-#print("ytopleft is $ytopleft \n");
-
-# Calculate top right coordinate
-
-my $xtopright=-99;
-if ($xpixposint + int($nxpixsize/2) > $naxis1) 
-  {$xtopright = $naxis1;} 
-else 
-  {$xtopright = $xpixposint + int($nxpixsize/2);}
-#print("xtopright is $xtopright \n");
-
-my $ytopright=-99;
-if ($ypixposint + int($nxpixsize/2) > $naxis2) 
-  {$ytopright = $naxis2;} 
-else 
-  {$ytopright = $ypixposint + int($nxpixsize/2);}
-#print("ytopright is $ytopright \n");
-
-print ("End of box coordinate calculation \n");
 
 # Copy subimage to array.
 ################################################################
@@ -339,7 +293,7 @@ for ( $y=0; $y < $nxpixsize; $y++){
 
 #    print "$x,$y \n";
 
-    $subimage[$x][$y] = $array[$xbotleft -1 +$x][$ybotleft -1 +$y];
+#    $subimage[$x][$y] = $array[$xbotleft -1 +$x][$ybotleft -1 +$y];
 #    print "copied $array[$xbotleft -1 +$x][$ybotleft -1 +$y] to $subimage[$x][$y]\n";
   }
 }
@@ -540,12 +494,8 @@ pgimag(\@subimage,$nxpixsize,$nxpixsize,1,$nxpixsize,1,$nxpixsize,0,5,[0,1,0,0,0
 
 #	pgpage();
 
-
-
-
-      }
-
 }
+
 
 pgclos();
 pgend();
@@ -555,27 +505,3 @@ exit;
 
 ###########################################################################
 
-sub copyarray
-  {
-#local int subimage(10,10);
-
-print("arrgh\n");
-print("first  parameter is $_[0]  \n");
-print("second  parameter is $_[1]  \n");
-
-my @narray_ref = @{$_[2]};
-#print("first array value is  ${ $_[2] } [1][1] \n\n");
-print "narray value[20][20] is $narray_ref[20][20] \n";
-
-my @nsubimage_ref = @{$_[3]};
-#print("subimage[0] is ${ $_[3] } [0] \n");
-print(" subimage[1] is $nsubimage_ref[1] \n");
-
-##my $firstval = $$@{$array_ref}[0];
-##my $firstval = $$$array_ref[0];
-
-#print("firstval is $firstval \n");
-
-#print("third argument is $@{ $_[2] }[1] \n");
-
-}
