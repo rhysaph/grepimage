@@ -1,5 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
+use Image::Magick;
 
 # test with eg
 # ./grepimage.pl 20 00 00 54 00 00 60 1827+00_ha-r_mosaic.fit
@@ -101,10 +102,11 @@ print "\nInput parameters appear to be valid\n\n";
 # 
 
 #my @infile = ();
-my $infile = ();
+#my $infile = ();
+my $infile = " ";
 
-my $fname=" ";
-my $i = 0;
+#my $fname=" ";
+#my $i = 0;
 #my $nfiles = $#ARGV +1 -7;
 
 #print "nfiles is $nfiles \n\n";
@@ -113,15 +115,17 @@ my $i = 0;
 #$infiles[$i] = $ARGV[$i+7];
 #}
 
-$infile = $ARGV[8];
+$infile = $ARGV[7];
+
+#print "ARGV[7] is $ARGV[7] \n";
 
 #print "Checking the following files for input coordinates \n";
 #map { print "$_\n" } @infiles;
-print "\n";
+#print "\n";
 
 print "Checking the following file for input coordinates \n";                       
+print "$infile \n";
 
-my $filename = " ";
 my $header_length=0;
 my $bytes_before_data=0;
 
@@ -151,7 +155,7 @@ my $dec = str2dec($decstr);
 #    print "opening $filename \n";
 
 $fitsheader = " ";
-$fitsheader = fitsrhead($filename, $header_length, $bytes_before_data);
+$fitsheader = fitsrhead($infile, $header_length, $bytes_before_data);
 $wcs=" ";
 $wcs = wcsinitn ($fitsheader, 0);
     
@@ -169,10 +173,10 @@ $retval=wcs2pix($wcs,$ra,$dec,$xpixpos,$ypixpos,$offscl);
 #    print "offscl is ",$offscl,"\n";
 
 if ($offscl == 0) {
-    print "Coordinates $rastr $decstr are in $filename\n";
+    print "Coordinates $rastr $decstr are in $infile\n";
 
 	my $status = 0;
-	my $fptr = Astro::FITS::CFITSIO::open_file($filename,Astro::FITS::CFITSIO::READONLY(),$status);
+	my $fptr = Astro::FITS::CFITSIO::open_file($infile,Astro::FITS::CFITSIO::READONLY(),$status);
 
 #print "a\n";
 	check_status($status) or die;
@@ -199,12 +203,12 @@ if ($offscl == 0) {
 	
 # Open image again to get another fptr
 #	fits_open_file($fptr,$filename,READONLY(),$status);
-	Astro::FITS::CFITSIO::fits_open_file($fptr,$filename,READONLY(),$status);
+	Astro::FITS::CFITSIO::fits_open_file($fptr,$infile,READONLY(),$status);
 
 #check_status($status) or die;
 #printf "Opened image OK \n\n";
 	if ( $status != 0 )
-	  { printf("Failed to open $filename. Exiting.\n");
+	  { printf("Failed to open $infile. Exiting.\n");
 	    die;}
 
 	my $xcol = 0;
@@ -226,12 +230,12 @@ if ($offscl == 0) {
 	my $errmsg = ' ';
 	if ( $status != 0 )
 {
-  printf ("Possible problem with $filename \n");
+  printf ("Possible problem with $infile \n");
   if ( $status == 506){
     printf("Status implies approximate wcs keyword values were returned \n");
   $status=0}
   else {
-    printf("Failed to read $filename. Exiting.\n");
+    printf("Failed to read $infile. Exiting.\n");
     printf("Status value is $status \n");
     fits_get_errstatus($status,$errmsg);
     printf("Error message is $errmsg \n");
@@ -278,31 +282,68 @@ if ( $clipping == 1 ){
 
 
 #my $subarraysize = $nxpixsize * $nxpixsize;
-my @subimage;
+#my @subimage;
 
 #$subimage[1]=71;
 
-print "number of pixels in subimage: nxpixsize is $nxpixsize \n";
+if ($clipping == 0){
+    print "number of pixels in subimage: nxpixsize is $nxpixsize \n";}
+else
+{ print "number of pixels in subimage is less than nxpixsize is $nxpixsize \n";}
 
-my $y=0;
-my $x=0;
+#my $y=0;
+#my $x=0;
 
 # perl arrays start at 0, but there is no <= so it is ok to use limits below.
-for ( $y=0; $y < $nxpixsize; $y++){
-  for ($x=0 ; $x < $nxpixsize ; $x++){
+#for ( $y=0; $y < $nxpixsize; $y++){
+#  for ($x=0 ; $x < $nxpixsize ; $x++){
 
 #    print "$x,$y \n";
 
 #    $subimage[$x][$y] = $array[$xbotleft -1 +$x][$ybotleft -1 +$y];
 #    print "copied $array[$xbotleft -1 +$x][$ybotleft -1 +$y] to $subimage[$x][$y]\n";
-  }
-}
+#  }
+#}
 
 # Dump array to check it looks OK.
 #print Dumper \@subimage;
 
 #&copyarray($naxis1, $naxis2, \@array, \@subimage);
 
+# create new image with imagemagick
+my $image = Image::Magick->new;
+
+# Read FITS image
+$image->Read($infile);
+
+# Clone the image
+my $example=$image->Clone();
+
+# Crop image
+# Warning, case sensitive, Crop works, crop does not.
+print "cropping...\n";
+#$example=$image->Clone();
+
+$example->Label('Crop');
+
+# set cropping values as below but with a string.
+#$example->Crop('100x100+10+100');
+$example->Crop($cropstring);
+
+# push cropped image back to original image
+push(@$image,$example);
+
+# Write it to a file
+#$example->write("jazz_noeq.fits");
+
+# change .fits to jpg
+my $jpgname=
+
+
+
+
+
+##########################################################################
 # Begin display of image
 ###########################################################################
 
