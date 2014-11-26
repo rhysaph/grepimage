@@ -174,61 +174,61 @@ $retval=wcs2pix($wcs,$ra,$dec,$xpixpos,$ypixpos,$offscl);
 
 if ($offscl == 0) {
     print "Coordinates $rastr $decstr are in $infile\n";
-
-	my $status = 0;
-	my $fptr = Astro::FITS::CFITSIO::open_file($infile,Astro::FITS::CFITSIO::READONLY(),$status);
-
+    
+    my $status = 0;
+    my $fptr = Astro::FITS::CFITSIO::open_file($infile,Astro::FITS::CFITSIO::READONLY(),$status);
+    
 #print "a\n";
-	check_status($status) or die;
-
-	#
-	# read dimensions of image
-	#
-	my $naxes;
-	$fptr->get_img_parm(undef,undef,$naxes,$status);
-	my ($naxis1,$naxis2) = @$naxes;
-
-	print "Reading ${naxis2}x${naxis1} image...";
-
-
+    check_status($status) or die;
+    
+    #
+    # read dimensions of image
+    #
+    my $naxes;
+    $fptr->get_img_parm(undef,undef,$naxes,$status);
+    my ($naxis1,$naxis2) = @$naxes;
+    
+    print "Reading ${naxis2}x${naxis1} image...";
+    
+    
 # Pixel coordinates were found in call to wcs2pix above
-	print "pixel coordinates are $xpixpos and $ypixpos \n";
-
-	my $xpixposint = int($xpixpos + 0.5);
-	my $ypixposint = int($ypixpos + 0.5);
-
-	print "pixel integer coordinates are $xpixposint and $ypixposint \n";
+    print "pixel coordinates are $xpixpos and $ypixpos \n";
+    
+    my $xpixposint = int($xpixpos + 0.5);
+    my $ypixposint = int($ypixpos + 0.5);
+    
+    print "pixel integer coordinates are $xpixposint and $ypixposint \n";
 
 # Now need to calculate box size given in arcsec in pixels
 	
 # Open image again to get another fptr
 #	fits_open_file($fptr,$filename,READONLY(),$status);
-	Astro::FITS::CFITSIO::fits_open_file($fptr,$infile,READONLY(),$status);
+    Astro::FITS::CFITSIO::fits_open_file($fptr,$infile,READONLY(),$status);
 
 #check_status($status) or die;
 #printf "Opened image OK \n\n";
-	if ( $status != 0 )
-	  { printf("Failed to open $infile. Exiting.\n");
+    if ( $status != 0 )
+	{ printf("Failed to open $infile. Exiting.\n");
 	    die;}
+    
+    my $xcol = 0;
+    my $ycol = 0;
+    my $xrefval = 0;
+    my $yrefval = 0;
+    my $xrefpix = 0;
+    my $yrefpix = 0;
+    my $xinc = 0;
+    my $yinc = 0;
+    my $rot = 0;
+    my $coordtype = ' ';
+    #my $status = 0;
+    my $returnval = 0;
 
-	my $xcol = 0;
-	my $ycol = 0;
-	my $xrefval = 0;
-	my $yrefval = 0;
-	my $xrefpix = 0;
-	my $yrefpix = 0;
-	my $xinc = 0;
-	my $yinc = 0;
-	my $rot = 0;
-	my $coordtype = ' ';
-	#my $status = 0;
-	my $returnval = 0;
 
-
-	fits_read_img_coord($fptr,$xrefval, $yrefval, $xrefpix, $yrefpix, $xinc, $yinc, $rot, $coordtype, $status);
+    fits_read_img_coord($fptr,$xrefval, $yrefval, $xrefpix, $yrefpix, $xinc, $yinc, $rot, $coordtype, $status);
 	
-	my $errmsg = ' ';
-	if ( $status != 0 )
+    my $errmsg = ' ';
+    if ( $status != 0 )
 {
   printf ("Possible problem with $infile \n");
   if ( $status == 506){
@@ -241,7 +241,10 @@ if ($offscl == 0) {
     printf("Error message is $errmsg \n");
     fits_close_file($fptr,$status);
     die;}
-  }
+}
+else {
+    print "These coordinates are not in this file \n";
+}
 
 # Close file
 $fptr->close_file($status);
@@ -334,7 +337,9 @@ push(@$image,$example);
 
 # change .fits to jpg
 $_ = $infile;
-my $jpgname=s/fits/jpg/i;
+
+my $jpgname = ' ';
+$jpgname=s/fits/jpg/i;
 
 print "jpgname is $jpgname \n";
 
@@ -357,7 +362,7 @@ print "jpgname is $jpgname \n";
 #sleep 5;
 
 # Open a new graphics window.
-	my $win_id = 0;
+#	my $win_id = 0;
 
 # Open a graphics device
 # return value must be >= 0 should check for this else error
@@ -365,7 +370,7 @@ print "jpgname is $jpgname \n";
 #	$win_id = pgopen('/xs');
 
 #	$win_id = pgopen('file.png/PNG');
-	print "win_id is $win_id \n";
+#	print "win_id is $win_id \n";
 
 #sleep 5;
 
