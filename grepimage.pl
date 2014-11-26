@@ -280,35 +280,11 @@ if ( $clipping == 1 ){
 # Copy subimage to array.
 ################################################################
 
-
-#my $subarraysize = $nxpixsize * $nxpixsize;
-#my @subimage;
-
-#$subimage[1]=71;
-
 if ($clipping == 0){
     print "number of pixels in subimage: nxpixsize is $nxpixsize \n";}
 else
 { print "number of pixels in subimage is less than nxpixsize is $nxpixsize \n";}
 
-#my $y=0;
-#my $x=0;
-
-# perl arrays start at 0, but there is no <= so it is ok to use limits below.
-#for ( $y=0; $y < $nxpixsize; $y++){
-#  for ($x=0 ; $x < $nxpixsize ; $x++){
-
-#    print "$x,$y \n";
-
-#    $subimage[$x][$y] = $array[$xbotleft -1 +$x][$ybotleft -1 +$y];
-#    print "copied $array[$xbotleft -1 +$x][$ybotleft -1 +$y] to $subimage[$x][$y]\n";
-#  }
-#}
-
-# Dump array to check it looks OK.
-#print Dumper \@subimage;
-
-#&copyarray($naxis1, $naxis2, \@array, \@subimage);
 
 # create new image with imagemagick
 my $image = Image::Magick->new;
@@ -328,6 +304,26 @@ $example->Label('Crop');
 
 # set cropping values as below but with a string.
 #$example->Crop('100x100+10+100');
+
+my $croptstring = ' ';
+my $bottx = 0;
+my $botty = 0;
+
+if ($xpixposint - $nxpixsize/2 < 0){
+    $bottx = 0}
+else {
+    $bottx = $xpixposint- $nxpixsize/2}
+
+if ($ypixposint - $nxpixsize/2 < 0){
+    $botty = 0}
+else {
+    $botty = $ypixposint- $nxpixsize/2}
+
+my $cropstring = ' ';
+
+$cropstring = sprintf("%dx%d+%d+%d",$nxpixsize, $nxpixsize, $bottx,$botty);
+print "cropstring is $cropstring \n";
+
 $example->Crop($cropstring);
 
 # push cropped image back to original image
@@ -337,9 +333,10 @@ push(@$image,$example);
 #$example->write("jazz_noeq.fits");
 
 # change .fits to jpg
-my $jpgname=
+$_ = $infile;
+my $jpgname=s/fits/jpg/i;
 
-
+print "jpgname is $jpgname \n";
 
 
 
@@ -347,7 +344,7 @@ my $jpgname=
 # Begin display of image
 ###########################################################################
 
-print ("Start of PGPLOT initialisation \n");
+#print ("Start of PGPLOT initialisation \n");
 
 # Initialise PGPLOT
 # First argument should be 0 according to source
@@ -364,7 +361,9 @@ print ("Start of PGPLOT initialisation \n");
 
 # Open a graphics device
 # return value must be >= 0 should check for this else error
-	$win_id = pgopen('/xs');
+
+#	$win_id = pgopen('/xs');
+
 #	$win_id = pgopen('file.png/PNG');
 	print "win_id is $win_id \n";
 
@@ -373,12 +372,12 @@ print ("Start of PGPLOT initialisation \n");
 # Select one of the open graphics devices and direct subsequent
 # plotting to it. The argument is the device identifier returned by
 # PGOPEN when the device was opened
-	pgslct($win_id);
+#	pgslct($win_id);
 
 # set color index. The default color index is 1, usually white on a black
 # background for video displays or black on a white background for
 # printer plots.
-	pgsci(3);
+#	pgsci(3);
 
 # set window and viewport and draw labeled frame.
 # Set PGPLOT "Plotter Environment".  PGENV establishes the scaling
@@ -422,10 +421,10 @@ print ("Start of PGPLOT initialisation \n");
 
 
 #	pgenv(0,$naxis2-1,0,$naxis1-1,0,0);
-        pgenv(0,$nxpixsize-1,0,$nxpixsize-1,0,0);
+#        pgenv(0,$nxpixsize-1,0,$nxpixsize-1,0,0);
 	
 # This is the transformation from pixel coordinate to axis value
-	my @tr = [0,1,0,0,0,1];
+#	my @tr = [0,1,0,0,0,1];
 
 
 # PGIMAG -- color image from a 2D data array
@@ -493,42 +492,11 @@ print ("Start of PGPLOT initialisation \n");
 
 #	pgimag(\@array,$naxis1,$naxis2,1,$naxis1,1,$naxis2,0,400,[0,1,0,0,0,1]);
 
-# Add bias here to make array all positive
-
-print "Scaling image \n";
-
-my $minval = 0.0;
-my $maxval = 0.0;
-
-# Can't use simple min or max on 2D array
-for ( $y=0; $y < $nxpixsize; $y++){
-  for ($x=0 ; $x < $nxpixsize ; $x++){
-    if ($subimage[$x][$y] < $minval ){$minval = $subimage[$x][$y]};
-    if ($subimage[$x][$y] > $maxval ){$maxval = $subimage[$x][$y]}
-  }
-}
+# temporarily put this in.
+#my @subimage;
 
 
-#$bias = min(\@subimage) ;
-print "Min value is $minval \n";
-print "Max value is $maxval \n";
-
-# If bias is less than zero add abs value to make whole array positive.
-if ($minval < 0.0){
-  for ( $y=0; $y < $nxpixsize; $y++){
-    for ($x=0 ; $x < $nxpixsize ; $x++){
-      $subimage[$x][$y] = $subimage[$x][$y] + abs($minval)}
-  }
-}
-
-# get depth of display
-my @depth = (0.0,0.0);
-pgqcir(@depth);
-print "indexes are $depth[0] and $depth[1] \n";
-
-
-
-pgimag(\@subimage,$nxpixsize,$nxpixsize,1,$nxpixsize,1,$nxpixsize,0,5,[0,1,0,0,0,1]);
+#pgimag(\@subimage,$nxpixsize,$nxpixsize,1,$nxpixsize,1,$nxpixsize,0,5,[0,1,0,0,0,1]);
 
 ##	pgcont($array,$naxis1,$naxis2,1,$naxis1,1,$naxis2,[10,30,50,100],8,@tr);
 
@@ -538,8 +506,8 @@ pgimag(\@subimage,$nxpixsize,$nxpixsize,1,$nxpixsize,1,$nxpixsize,0,5,[0,1,0,0,0
 }
 
 
-pgclos();
-pgend();
+#pgclos();
+#pgend();
 print "\n";
 print "\n";
 exit;
