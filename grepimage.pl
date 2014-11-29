@@ -4,7 +4,7 @@ use Image::Magick;
 
 # test with eg
 # ./grepimage.pl 20 00 00 54 00 00 60 1827+00_ha-r_mosaic.fit
-# or
+# or for coordinates that are in an image:
 # ./grepimage.pl 18 55 00 13 00 00 60 1850+14_ha-r_mosaic.fit
 #
 
@@ -332,16 +332,30 @@ $example->Crop($cropstring);
 # push cropped image back to original image
 push(@$image,$example);
 
-# Write it to a file
-#$example->write("jazz_noeq.fits");
-
-# change .fits to jpg
+# change .fits to jpg, first set $_ to be the infile.
 $_ = $infile;
 
+# If infile contains the string 'fits' then convert that to jpg, if
+# 'fits' is not found, try 'fit'. If we have got this far, then the
+# image is a fits file without a fits extension, so add .jpg anyway.
+
 my $jpgname = ' ';
-$jpgname=s/fits/jpg/i;
+
+$jpgname = $infile;
+
+if (m/fits/i) {
+    $jpgname=~s/fits/jpg/i;}
+else {
+    if (m/fit/i) {
+	$jpgname=~s/fit/jpg/i;}
+    else {
+	$jpgname=$infile.".jpg"}
+}
 
 print "jpgname is $jpgname \n";
+
+# Write cropped image to a file
+$example->write($jpgname);
 
 
 
